@@ -1,15 +1,16 @@
 # Set windows on Dark Mode
-Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name SystemUsesLightTheme -Value 0 -Type Dword -Force;
-Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize -Name AppsUseLightTheme -Value 0 -Type Dword -Force;
+$themePath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+Set-ItemProperty -Path $themePath -Name 'SystemUsesLightTheme' -Value 0 -Type Dword -Force
+Set-ItemProperty -Path $themePath -Name 'AppsUseLightTheme' -Value 0 -Type Dword -Force
 
 # Set Taskbar alignment to Left
-$registryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-$Al = "TaskbarAl"
-$value = "0"
-New-ItemProperty -Path $registryPath -Name $Al -Value $value -PropertyType DWORD -Force -ErrorAction Ignore
+$registryPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+$taskbarAlignment = 'TaskbarAl'
+Set-ItemProperty -Path $registryPath -Name $taskbarAlignment -Value 0 -Type Dword -Force -ErrorAction Stop
 
 # Set windows appearance to best appearance settings
-REG ADD HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects /v VisualFXSetting /t REG_DWORD /d 1 /f
+$visualEffectsPath = 'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'
+Start-Process -FilePath 'reg' -ArgumentList "ADD $visualEffectsPath /v VisualFXSetting /t REG_DWORD /d 1 /f" -NoNewWindow -Wait
 
 # Set mouse speed to 5
 Function Set-MouseSpeed {
@@ -30,21 +31,24 @@ Function Set-MouseSpeed {
     '
 
     $SPI_SETMOUSESPEED = 0x0071
-    $MouseSpeedRegPath = 'hkcu:\Control Panel\Mouse'
+    $MouseSpeedRegPath = 'HKCU:\Control Panel\Mouse'
     Write-Verbose "MouseSensitivity before WinAPI call: $((Get-ItemProperty $MouseSpeedRegPath).MouseSensitivity)"
 
-    $null = $winApi::SystemParametersInfo($SPI_SETMOUSESPEED, 0, $Value, 0)
-
-    # Calling SystemParametersInfo() does not permanently store the modification
-    # of the mouse speed. It needs to be changed in the registry as well
-    Set-ItemProperty $MouseSpeedRegPath -Name MouseSensitivity -Value $Value
-
-    Write-Verbose "MouseSensitivity after WinAPI call: $((Get-ItemProperty $MouseSpeedRegPath).MouseSensitivity)"
+    try {
+        $null = $winApi::SystemParametersInfo($SPI_SETMOUSESPEED, 0, $Value, 0)
+        Set-ItemProperty -Path $MouseSpeedRegPath -Name 'MouseSensitivity' -Value $Value -ErrorAction Stop
+        Write-Verbose "MouseSensitivity after WinAPI call: $((Get-ItemProperty $MouseSpeedRegPath).MouseSensitivity)"
+    }
+    catch {
+        Write-Error "Failed to set mouse speed: $_"
+    }
 }
 
 Set-MouseSpeed -Value 5 -Verbose
 
 # Restart Explorer task
-Stop-Process -Name explorer -Force; Start-Process explorer
+Stop-Process -Name 'explorer' -Force
+Start-Process -FilePath 'explorer'
 
-#Set notification config and show it
+# Set notification config and show it
+# (Include additional code here if needed)
